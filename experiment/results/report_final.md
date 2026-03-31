@@ -103,9 +103,8 @@ The simplest baseline. The model receives only the formal problem statement in a
 **Prompt template:**
 ```
 Complete the following Lean 4 code:
-```lean4
+
 {full .lean task file with sorry}
-```
 ```
 
 **Characteristics:**
@@ -394,9 +393,10 @@ You may find the following Mathlib lemmas useful:
 {flat list of lemma signatures}
 
 Complete the following Lean 4 code:
-```lean4
+
+lean4
 {full .lean file with sorry}
-```
+
 ```
 
 ---
