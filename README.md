@@ -185,18 +185,6 @@ Three SOTA Lean search engines compared with C21 under identical conditions (sam
 
 See `experiment/results/report_final.md` for the full report.
 
-## Citation
-
-If you use SciLib-GRC21 in your research, please cite:
-
-```bibtex
-@misc{scilib-grc21-2026,
-  title={SciLib-GRC21: Graph-Structured Premise Retrieval for Lean 4 Theorem Proving},
-  author={Khalov, A.P. and Ataeva, O.M. and Tuchkova, N.P.},
-  year={2026},
-  note={SciLib Project, \url{https://github.com/andkhalov/SciLib-GRC21}}
-}
-```
 
 ## License
 
