@@ -134,7 +134,7 @@ A two-step mode inspired by Chain-of-Thought prompting (Wei et al., 2022). In th
 
 #### B1 -- Vector Semantic Search
 
-Uses the SciLib **MCP server** (port 8111) for semantic search over the `scilib_mathlib_v1` collection in Qdrant, with the **SciLibMath_v1** embedding model (Khalov, Ataeva, Tuchkova, 2026. "Creating a multimodal dataset for the SciLibRu semantic library using a language model." *Pattern Recognit. Image Anal.*, 36. In press).
+Uses the SciLib **MCP server** (port 8111) for semantic search over the `scilib_mathlib_v1` collection in Qdrant, with the **SciLibMath_v1** embedding model (SciLibRuModal v1, 2026. Details anonymized for review).
 
 **Pipeline:**
 

@@ -185,6 +185,9 @@ Three SOTA Lean search engines compared with C21 under identical conditions (sam
 
 See `experiment/results/report_final.md` for the full report.
 
+## Citation
+
+Citation details will be provided upon publication.
 
 ## License
 
