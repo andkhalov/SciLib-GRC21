@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 import config as cfg
 from graph_rag import graph_hints_c21, format_hints_text, extract_goal_features
+from lean_checker import has_proof_content, get_checker
 
 # ── Logging ──
 
@@ -28,10 +29,10 @@ log = logging.getLogger("lean-grag")
 
 app = FastAPI(
     title="SciLib-GRC21",
-    description="Graph-structured premise retrieval for Lean 4 theorem proving. "
-                "Returns categorized Mathlib lemma hints (apply/rw/simp) based on "
-                "GraphDB ontology expansion + Qdrant vector search.",
-    version="1.0.0",
+    description="Graph-structured premise retrieval and proof verification for Lean 4. "
+                "POST /search — categorized Mathlib lemma hints (apply/rw/simp). "
+                "POST /check — Lean 4 proof verification via Mathlib REPL.",
+    version="1.1.0",
 )
 
 
@@ -118,6 +119,72 @@ async def search(req: SearchRequest):
         hints_structured=hints,
         hints_list=hint_items,
         features=features,
+        processing_time_ms=processing_ms,
+    )
+
+
+class CheckRequest(BaseModel):
+    lean_code: str = Field(..., description="Lean 4 code to verify")
+    timeout: int = Field(default=30, ge=5, le=120, description="Verification timeout in seconds")
+
+
+class CheckResponse(BaseModel):
+    success: bool = Field(description="True if Lean verified the proof without errors")
+    error_class: Optional[str] = Field(default=None, description="Error category (TACTIC_FAILURE, PARSE_ERROR, etc.)")
+    error_message: str = Field(default="", description="Lean error message (truncated to 2000 chars)")
+    time_ms: int = Field(default=0, description="Lean verification time in milliseconds")
+    sanity_ok: bool = Field(description="True if code passed sanity checks (not sorry/empty/NL)")
+    sanity_reason: str = Field(default="OK", description="Sanity check result explanation")
+    processing_time_ms: int = Field(description="Total processing time including sanity + Lean check")
+
+
+@app.post("/check", response_model=CheckResponse)
+async def check(req: CheckRequest):
+    """Verify Lean 4 code using the Mathlib REPL.
+
+    Includes sanity checks: rejects sorry-only proofs, bare imports,
+    comment-only code, and natural language text that Lean would
+    trivially accept without actually verifying anything.
+
+    Environment: Lean 4.28.0-rc1, Mathlib (Lean 4.26.0 toolchain).
+    """
+    t0 = time.time()
+
+    # Sanity check first
+    sanity_ok, sanity_reason = has_proof_content(req.lean_code)
+    if not sanity_ok:
+        processing_ms = int((time.time() - t0) * 1000)
+        log.info("Check rejected by sanity: %s", sanity_reason)
+        return CheckResponse(
+            success=False,
+            error_class="SANITY_CHECK_FAILED",
+            error_message=sanity_reason,
+            time_ms=0,
+            sanity_ok=False,
+            sanity_reason=sanity_reason,
+            processing_time_ms=processing_ms,
+        )
+
+    # Send to Lean service via Kafka
+    try:
+        checker = get_checker()
+        result = checker.check(req.lean_code, timeout=req.timeout)
+    except Exception as e:
+        log.error("Lean check error: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+    processing_ms = int((time.time() - t0) * 1000)
+
+    log.info("Check completed: success=%s, error=%s, lean_ms=%s, total_ms=%s",
+             result['success'], result.get('error_class'), result.get('time_ms'), processing_ms)
+
+    return CheckResponse(
+        success=result['success'],
+        error_class=result.get('error_class'),
+        error_message=result.get('error_message', ''),
+        time_ms=result.get('time_ms', 0),
+        sanity_ok=True,
+        sanity_reason="OK",
         processing_time_ms=processing_ms,
     )
 

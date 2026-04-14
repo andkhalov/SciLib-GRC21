@@ -90,6 +90,69 @@ Search for relevant Mathlib lemmas given a Lean 4 theorem statement.
 - `simp` — Use with `simp [...]`
 - `vector` — Semantically similar (from vector search)
 
+### POST /check
+
+Verify Lean 4 code using the Mathlib REPL. Includes sanity checks that reject trivially valid but useless submissions (sorry-only proofs, bare imports, comment-only code, natural language text).
+
+**Environment:** Lean 4.28.0-rc1, Mathlib (Lean 4.26.0 toolchain)
+
+**Request body:**
+```json
+{
+  "lean_code": "import Mathlib\n...\ntheorem name ... := by norm_num",
+  "timeout": 30
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `lean_code` | string | required | Lean 4 code to verify |
+| `timeout` | int | 30 | Verification timeout in seconds (5–120) |
+
+**Response:**
+```json
+{
+  "success": true,
+  "error_class": null,
+  "error_message": "",
+  "time_ms": 358,
+  "sanity_ok": true,
+  "sanity_reason": "OK",
+  "processing_time_ms": 1194
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `success` | `true` if Lean verified the proof without errors |
+| `error_class` | Error category: `TACTIC_FAILURE`, `PARSE_ERROR`, `GOAL_NOT_CLOSED`, `TIMEOUT`, `SANITY_CHECK_FAILED` |
+| `error_message` | Lean error message (truncated to 2000 chars) |
+| `time_ms` | Lean verification time in milliseconds |
+| `sanity_ok` | `true` if code passed sanity checks |
+| `sanity_reason` | Sanity check explanation |
+
+**Sanity checks (reject before sending to Lean):**
+- `sorry` — proof placeholder, not a real proof
+- Bare imports (`import Mathlib` with nothing else)
+- Comment-only code (`-- We need to show...`)
+- Natural language text (`The proof follows by...`)
+- Empty input
+
+**Example — successful proof:**
+```bash
+curl -X POST https://scilib.tailb97193.ts.net/grag/check \
+  -H "Content-Type: application/json" \
+  -d '{"lean_code": "import Mathlib\ntheorem t : 1 + 1 = 2 := by norm_num"}'
+```
+
+**Example — sorry rejected:**
+```bash
+curl -X POST https://scilib.tailb97193.ts.net/grag/check \
+  -H "Content-Type: application/json" \
+  -d '{"lean_code": "import Mathlib\ntheorem t : 1 + 1 = 2 := by sorry"}'
+# → {"success": false, "error_class": "SANITY_CHECK_FAILED", "sanity_reason": "Proof contains only 'sorry'..."}
+```
+
 ## Usage Example
 
 ### Python
